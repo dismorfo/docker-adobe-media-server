@@ -1,32 +1,34 @@
-FROM centos:6
-MAINTAINER Adrian Oprea<adrian@oprea.rocks>
+# Usage example
+#
+# 1) Build container image
+# $ docker build -t nyudlts/dlts-ams:latest .
+# 2) Run container
+# $ docker run -t --name=dlts-ams -p 8000:80 -p 443:443 -p 1111:1111 -p 1935:1935 nyudlts/dlts-ams:latest
+FROM centos:7.6.1810
 
-RUN rpm --import https://getfedora.org/static/0608B895.txt
-RUN yum update -y && yum install -y tar python-setuptools
-RUN easy_install supervisor
+LABEL maintainer="aortiz@nyu.edu"
 
-RUN mkdir -p /var/log/supervisor
-COPY conf/supervisord.conf /etc/supervisord.conf
+LABEL version="1.0"
 
-WORKDIR /tmp
-RUN curl -O http://download.macromedia.com/pub/adobemediaserver/5_0_8/AdobeMediaServer5_x64.tar.gz
-WORKDIR /tmp/ams_latest
-RUN tar zxvf ../AdobeMediaServer5_x64.tar.gz -C . --strip-components=1
-RUN rm -Rf License.txt
-RUN sed -i -e 's:read cont < /dev/tty:#read cont < /dev/tty:g' installAMS
-
-COPY conf/installAMS.input installAMS.input
-
-RUN ./installAMS < installAMS.input
+COPY conf/installAMS.input /tmp/ams_latest/installAMS.input
 COPY certs /opt/adobe/certs
 COPY conf/Adaptor.xml /opt/adobe/ams/conf/_defaultRoot_/Adaptor.xml
 
-# CLEANUP
-WORKDIR /tmp
-RUN rm -Rf ams_latest AdobeMediaServer5_x64.tar.gz
+RUN set -eux; \
+  yum update -y; \
+  yum install -y tar python-pip python-wheel python-setuptools; \
+  easy_install supervisor; \
+  mkdir -p /var/log/supervisor; \
+  cd /tmp/ams_latest; \
+  curl -O http://download.macromedia.com/pub/adobemediaserver/5_0_8/AdobeMediaServer5_x64.tar.gz ; \
+  tar zxvf AdobeMediaServer5_x64.tar.gz -C . --strip-components=1; \
+  rm -Rf /tmp/ams_latest/License.txt; \
+  sed -i -e 's:read cont < /dev/tty:#read cont < /dev/tty:g' /tmp/ams_latest/installAMS; \
+  ./installAMS < /tmp/ams_latest/installAMS.input; \
+  rm -Rf /tmp/ams_latest AdobeMediaServer5_x64.tar.gz
 
-VOLUME ["/opt/adobe/ams/applications"]
+COPY conf/supervisord.conf /etc/supervisord.conf
 
 EXPOSE 80 443 1111 1935
 
-CMD ["/usr/bin/supervisord"]
+CMD [ "/usr/bin/supervisord" ]

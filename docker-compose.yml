@@ -1,9 +1,12 @@
-ams:
-    build: .
-    domainname: ams.dev
-    hostname: mediaserver
+version: '3'
+
+services:
+
+  ams:
+    image: nyudlts/dlts-ams:latest
     ports:
-        - "1935:1935"
-        - "1111:1111"
-        - "443:443"
-        - "80:80"
+      - 1111:1111
+      - 1935:1935
+      - 8000:80
+      - 443:443
+    tty: true
